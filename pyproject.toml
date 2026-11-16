@@ -1,0 +1,24 @@
+[project]
+name = "basic-rag"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Junaid Khan" }
+]
+requires-python = ">=3.15"
+dependencies = [
+    "groq>=1.7.0",
+    "pathlib>=1.0.1",
+    "pypdf>=7.1.0",
+    "python-docx>=1.2.0",
+    "python-dotenv>=1.2.4",
+]
+
+[project.scripts]
+basic-rag = "basic_rag:main"
+bre = "basic_rag.ingestion.model:model_call"
+
+[build-system]
+requires = ["uv_build>=0.13.0,<0.14.0"]
+build-backend = "uv_build"
