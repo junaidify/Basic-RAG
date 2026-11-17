@@ -1,0 +1,6 @@
+groq
+pathlib
+pypdf
+python-docx
+python-dotenv
+sentence-transformer
