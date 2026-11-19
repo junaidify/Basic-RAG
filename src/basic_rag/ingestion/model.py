@@ -1,4 +1,3 @@
-from re import A
 from groq import Groq
 from dotenv import load_dotenv
 import os
@@ -28,6 +27,4 @@ def model_call():
 
     for chunk in result:
         print(chunk.choices[0].delta.content, end="")
-
-    # print(result.choices[0].message.content)
     
