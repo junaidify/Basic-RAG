@@ -1,121 +1,26 @@
-from typing import Callable
-from basic_rag.data import data 
-from pathlib import Path
-from pypdf import PdfReader
-from docx import Document 
+# from typing import Callable
+# from basic_rag.data import data 
+# from pathlib import Path
+# from ingestion.file_reader import reading_from_data_dir
 
-SUPPORTED_EXTENSION = [".md", ".pdf", ".txt", ".docx"]
+text_for_chunking = """
+Run this on a small test string to verify before plugging it into your RAG pipeline — e.g. chunking_data("a" * 2500, 1000, 150) should give you 3 chunks with sizes 1000, 1000, 500.
+My honest suggestion: hand-rolling chunkers is a good learning exercise, but for a real RAG project use RecursiveCharacterTextSplitter from LangChain or semantic-text-splitter — they handle edge cases (splitting mid-word, mid-paragraph, overlap bookkeeping) that this simple version won't."""
+  
 
-
-def reading_from_data_dir(data) -> list[dict]: 
-    document = []
-    folder = Path(data)
-
-    for file in folder.rglob("*"): 
-        if not file.is_file(): 
-            continue
-
-        reader = file_reader.get(file.suffix.lower())
-
-        if reader is None: 
-            continue
-
-        document.append(reader(file))
-        
-
-file_reader: dict[str, Callable[[Path], list[dict]]] = {
-    ".pdf" : read_pdf, 
-    ".md": read_md, 
-    ".docx": read_docx, 
-    ".txt": read_txt
-} 
-
-
-def read_pdf(file) -> list[dict]: 
-    pages = []
-    reader = PdfReader(file)
-
-    for pages_num, page in enumerate(reader.pages): 
-        text = page.extract_text()
-
-        if text.strip(): 
-            pages.append({
-                "text": text, 
-                "metadata": {
-                    "source": file.name,
-                    "page_number": pages_num, 
-                }
-            })
-
-    return pages      
-
-
-def read_md(file) -> list[dict]: 
-    text = file.read_text(encoding="utf8")   
-
-    if not text.strip(): 
-        return []
-
-    return [{
-        "text": text, 
-        "metadata": {
-            "source": file.name,
-            "section": None
-        }
-    }]  
-
-
-def read_docx(file) -> list[dict]: 
-    document = Document(file)
-    content = []
-
-    for para_num, paragraph in enumerate(document.paragraphs):
-        if paragraph.text.strip(): 
-            content.append({
-                "text": paragraph.text, 
-                "metadata": {
-                    "source": file, 
-                    "paragraph": para_num, 
-                    "file_type": "docx"
-                }
-            }) 
-
-        
-    for table_num, table in enumerate(document.tables): 
-        for row in table.rows: 
-            row_text = [
-                cell.text.strip()
-                for cell in row
-                if cell.text.strip()
-            ]
-
-            content.append({
-                "text": row_text, 
-                "metadata": {
-                    "source": file, 
-                    "table_number": table_num, 
-                    "file_type": "docx"
-                }
-            })
-
-    return content
-
-
-
-
-    
-
-def chunking_data(text, text_window: 1000, overlap: 150) -> list[int]: 
+def chunking_data(text = text_for_chunking, text_window = 50, overlap = 15) -> list[int]: 
     result = []
     start = 0
 
-    while len(text) > text_window: 
-        chunk = text.split(start, text_window - start)
+    while start < len(text): 
+        end = min(start + text_window, len(text))
         
-        result.append(chunk)
-        start = chunk - overlap
+        result.append(text[start : end])
+        start = text_window - overlap
   
     return result
 
-
-    
+if __name__ == "__main__": 
+    output = chunking_data()
+    for t in output: 
+        print(t)
