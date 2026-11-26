@@ -12,7 +12,7 @@ def reading_from_data_dir(data: Path = DIR_PATH) -> list[dict]:
     folder = Path(data)
 
     for file in folder.rglob("*"): 
-        if not file.is_file() or : 
+        if not file.is_file() : 
             continue
 
         reader = file_reader.get(file.suffix.lower())

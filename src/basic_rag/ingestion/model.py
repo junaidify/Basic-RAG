@@ -22,7 +22,6 @@ def model_call():
         ],
         stream = True, 
         max_completion_tokens=500
-    
     )
 
     for chunk in result:
