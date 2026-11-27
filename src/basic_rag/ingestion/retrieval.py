@@ -1,30 +1,37 @@
-from typing import Callable
-from basic_rag.data import data 
-from pathlib import Path
-# from ingestion.file_reader import reading_from_data_dir
-from basic_rag.ingestion.embedding import embed_chunks
+from basic_rag.ingestion.embedding import embed_model
+from langchain_community.vectorstores import FAISS
+from langchain_core.documents import Document
 
-text_for_chunking = """
-Run this on a small test string to verify before plugging it into your RAG pipeline — e.g. chunking_data("a" * 2500, 1000, 150) should give you 3 chunks with sizes 1000, 1000, 500.
-My honest suggestion: hand-rolling chunkers is a good learning exercise, but for a real RAG project use RecursiveCharacterTextSplitter from LangChain or semantic-text-splitter — they handle edge cases (splitting mid-word, mid-paragraph, overlap bookkeeping) that this simple version won't."""
-  
-embeddings = embed_chunks(chunking_data)
 
-def chunking_data(text = text_for_chunking, text_window = 50, overlap = 15) -> list[int]: 
-    result = []
-    start = 0
+def create_vector_store(chunks: list[str | Document]):
+    if not chunks:
+        raise ValueError("Cannot create a vector store from empty chunks.")
 
-    while start < len(text): 
-        end = min(start + text_window, len(text))
+    if isinstance(chunks[0], Document):
+        return FAISS.from_documents(
+            documents=chunks,
+            embedding=embed_model
+        )
+    return FAISS.from_texts(
+        texts=chunks,
+        embedding=embed_model
+    )
+
+
+def retrieval_input(vector_store, question: str | None = None, k: int = 3, score_threshold: float | None = None):
+    if not question:
+        question = input("Enter your question: ")
         
-        result.append(text[start : end])
-        start = start + text_window - overlap
-  
-    return result
+    results_with_scores = vector_store.similarity_search_with_score(
+        query=question,
+        k=k
+    )
 
+    if score_threshold is not None:
+        matched = [
+            (doc, score) for doc, score in results_with_scores if score <= score_threshold
+        ]
+    else:
+        matched = results_with_scores
 
-
-if __name__ == "__main__": 
-    output = chunking_data()
-    for i in output: 
-        print(i)
+    return question, matched
