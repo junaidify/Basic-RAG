@@ -19,17 +19,16 @@ def embed_chunks(chunks: list[str]) -> np.ndarray:
     model = get_model()
     embeddings = model.encode(
         chunks, 
-        normalize_embeddings=True, 
+        normalize_embeddings=False, 
         show_progress_bar=True
     )
 
     return embeddings
 
 
+embed_model = HuggingFaceEmbeddings(
+    model_name="sentence-transformers/all-MiniLM-L6-v2"
+)
 
 def embed_chunks_using_langchain(chunks):
-    embed_model = HuggingFaceEmbeddings(
-        model_name = "sentence-transformers/all-MiniLM-L6-v2"
-    )
-
     return embed_model.embed_documents(chunks)

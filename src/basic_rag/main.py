@@ -1,13 +1,66 @@
-from basic_rag.ingestion.chunking import chunking_data, chunking_using_langchain
-from basic_rag.ingestion.embedding import embed_chunks, embed_chunks_using_langchain
+from basic_rag.ingestion.chunking import chunking_using_langchain
+from basic_rag.ingestion.retrieval import create_vector_store, retrieval_input
+from basic_rag.ingestion.file_reader import reading_from_data_dir
+from basic_rag.ingestion.model import generate_answer
 
-text_for_chunking = """
-Run this on a small test string to verify before plugging it into your RAG pipeline — e.g. chunking_data("a" * 2500, 1000, 150) should give you 3 chunks with sizes 1000, 1000, 500.
-My honest suggestion: hand-rolling chunkers is a good learning exercise, but for a real RAG project use RecursiveCharacterTextSplitter from LangChain or semantic-text-splitter — they handle edge cases (splitting mid-word, mid-paragraph, overlap bookkeeping) that this simple version won't."""
+sample_text_for_chunking = """
+Java is an object-oriented programming language.
 
-def main(): 
-    # chunks = chunking_data(text_for_chunking)
-    chunks = chunking_using_langchain(text_for_chunking)
-    embedding = embed_chunks_using_langchain(chunks)
+Spring Boot simplifies Java backend development.
 
-    print(embedding)
+Python is used for machine learning and artificial intelligence.
+
+React is a JavaScript frontend library for building user interfaces.
+
+FastAPI is a modern, fast web framework for building APIs with Python.
+"""
+
+
+def load_chunks() -> list[str]:
+    raw_docs = reading_from_data_dir()
+
+    if raw_docs:
+        print(f"Loaded {len(raw_docs)} document(s) from data directory.")
+        chunks = []
+        for doc in raw_docs:
+            text = doc.get("text", "")
+            if text:
+                chunks.extend(chunking_using_langchain(text))
+        if chunks:
+            return chunks
+
+    print("No documents found in data directory. Using sample dataset.")
+    # In the sample dataset, each line is an independent fact:
+    return [line.strip() for line in sample_text_for_chunking.strip().split("\n") if line.strip()]
+
+
+def main():
+    print("\n--- Basic RAG Pipeline ---")
+    chunks = load_chunks()
+    print(f"Total chunks indexed: {len(chunks)}")
+
+    print("Building vector store...")
+    vector_store = create_vector_store(chunks)
+
+    question, results = retrieval_input(vector_store, k=2, score_threshold=None)
+
+    if not results:
+        print(f"\n[!] No chunks retrieved for: '{question}'")
+        return
+
+    print(f"\nTop retrieved chunk(s):")
+    context_parts = []
+    for doc, score in results:
+        confidence = "High" if score < 0.8 else ("Moderate" if score < 1.3 else "Low")
+        print(f"\n  [Distance score: {score:.4f} | Confidence: {confidence}]")
+        print(f"  {doc.page_content}")
+        context_parts.append(doc.page_content)
+
+    combined_context = "\n\n".join(context_parts)
+
+    print("\n--- Generating Answer ---")
+    generate_answer(question=question, context=combined_context)
+
+
+if __name__ == "__main__":
+    main()

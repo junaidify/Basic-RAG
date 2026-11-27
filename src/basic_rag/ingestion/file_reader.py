@@ -3,82 +3,53 @@ from docx import Document
 from typing import Callable
 from pathlib import Path
 
-
 SUPPORTED_EXTENSION = [".md", ".pdf", ".txt", ".docx"]
-DIR_PATH = Path(__file__).parent/"data"
-
-def reading_from_data_dir(data: Path = DIR_PATH) -> list[dict]: 
-    document = []
-    folder = Path(data)
-
-    for file in folder.rglob("*"): 
-        if not file.is_file() : 
-            continue
-
-        reader = file_reader.get(file.suffix.lower())
-
-        if reader is None: 
-            continue
-
-        document.append(reader(file))
-        
-    return document
-        
-
-file_reader: dict[str, Callable[[Path], list[dict]]] = {
-    ".pdf" : read_pdf, 
-    ".md": read_md, 
-    ".docx": read_docx, 
-    ".txt": read_txt
-} 
+DIR_PATH = Path(__file__).resolve().parent.parent / "data"
 
 
-def read_pdf(file) -> list[dict]: 
+def read_pdf(file: Path) -> list[dict]: 
     pages = []
-    reader = PdfReader(file)
+    reader = PdfReader(str(file))
 
     for pages_num, page in enumerate(reader.pages): 
-        text = page.extract_text()
-
+        text = page.extract_text() or ""
         if text.strip(): 
             pages.append({
-                "text": text, 
+                "text": text.strip(), 
                 "metadata": {
                     "source": file.name,
                     "page_number": pages_num, 
                     "file_type": "PDF"
                 }
             })
-
     return pages      
 
 
-def read_md(file) -> list[dict]: 
-    text = file.read_text(encoding="utf8")   
-
+def read_md(file: Path) -> list[dict]: 
+    text = file.read_text(encoding="utf-8")   
     if not text.strip(): 
         return []
 
     return [{
-        "text": text, 
+        "text": text.strip(), 
         "metadata": {
-            "source": file,
+            "source": file.name,
             "section": None, 
             "file_type": "markdown"
         }
     }]  
 
 
-def read_docx(file) -> list[dict]: 
-    document = Document(file)
+def read_docx(file: Path) -> list[dict]: 
+    document = Document(str(file))
     content = []
 
     for para_num, paragraph in enumerate(document.paragraphs):
         if paragraph.text.strip(): 
             content.append({
-                "text": paragraph.text, 
+                "text": paragraph.text.strip(), 
                 "metadata": {
-                    "source": file, 
+                    "source": file.name, 
                     "paragraph": para_num, 
                     "file_type": "docx"
                 }
@@ -91,28 +62,59 @@ def read_docx(file) -> list[dict]:
                 for cell in row
                 if cell.text.strip()
             ]
-
-            content.append({
-                "text": " | ".join(row_text), 
-                "metadata": {
-                    "source": file, 
-                    "table_number": table_num, 
-                    "file_type": "docx"
-                }
-            })
+            if row_text:
+                content.append({
+                    "text": " | ".join(row_text), 
+                    "metadata": {
+                        "source": file.name, 
+                        "table_number": table_num, 
+                        "file_type": "docx"
+                    }
+                })
 
     return content
 
 
-
-def read_txt(file) -> list[dict]: 
-
-    with open(file) as f: 
-       return [{
-        "text": f, 
+def read_txt(file: Path) -> list[dict]: 
+    with open(file, "r", encoding="utf-8", errors="replace") as f: 
+        text = f.read()
+    if not text.strip():
+        return []
+    return [{
+        "text": text.strip(), 
         "metadata": {
-            "source": file, 
+            "source": file.name, 
             "section": None,
             "file_type": "txt"
         }
-       }]
+    }]
+
+
+file_reader: dict[str, Callable[[Path], list[dict]]] = {
+    ".pdf": read_pdf, 
+    ".md": read_md, 
+    ".docx": read_docx, 
+    ".txt": read_txt
+}
+
+
+def reading_from_data_dir(data: Path = DIR_PATH) -> list[dict]: 
+    documents = []
+    folder = Path(data)
+
+    if not folder.exists():
+        return documents
+
+    for file in folder.rglob("*"): 
+        if not file.is_file(): 
+            continue
+
+        reader = file_reader.get(file.suffix.lower())
+        if reader is None: 
+            continue
+
+        docs = reader(file)
+        if docs:
+            documents.extend(docs)
+        
+    return documents
